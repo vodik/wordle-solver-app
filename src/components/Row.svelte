@@ -4,10 +4,10 @@
 
   const cycle = (index) => {
     if (status[index] === null) {
-      status[index] = "green";
-    } else if (status[index] === "green") {
       status[index] = "yellow";
     } else if (status[index] === "yellow") {
+      status[index] = "green";
+    } else if (status[index] === "green") {
       status[index] = null;
     }
   };

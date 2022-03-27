@@ -32,6 +32,7 @@
   }
 
   .letter-box {
+    user-select: none;
     border: 2px solid gray;
     border-radius: 3px;
     margin: 2px;

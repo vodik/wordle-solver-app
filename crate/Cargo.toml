@@ -1,5 +1,5 @@
 [package]
-name = "wordle"
+name = "wordle_solver"
 authors = ["Simon Gomizelj"]
 description = "Wordle Solver"
 license = "Apache-2.0/MIT"

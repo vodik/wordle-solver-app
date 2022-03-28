@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use js_sys::Error;
 use std::{fmt, str};
 use wasm_bindgen::prelude::*;
@@ -47,16 +45,16 @@ impl fmt::Display for Word {
 
 #[derive(Debug, Clone, Copy)]
 enum Rule {
-    Correct,
-    Misplaced,
-    Incorrect,
+    Correct(u8),
+    Misplaced(u8),
+    Incorrect(u8),
 }
 
 #[wasm_bindgen]
 #[derive(Default, Debug)]
 pub struct Filter {
     pos: usize,
-    rules: [Option<(Rule, u8)>; 5],
+    rules: [Option<Rule>; 5],
     counts: [u8; 26],
     includes: u32,
     excludes: u32,
@@ -72,7 +70,7 @@ impl Filter {
     #[wasm_bindgen(js_name = markCorrect)]
     pub fn mark_correct(&mut self, c: char) {
         let c = c as u8;
-        self.rules[self.pos] = Some((Rule::Correct, c));
+        self.rules[self.pos] = Some(Rule::Correct(c));
         self.counts[position(c) as usize] += 1;
         self.includes |= mask(c);
         self.pos += 1;
@@ -81,7 +79,7 @@ impl Filter {
     #[wasm_bindgen(js_name = markMisplaced)]
     pub fn mark_misplaced(&mut self, c: char) {
         let c = c as u8;
-        self.rules[self.pos] = Some((Rule::Misplaced, c));
+        self.rules[self.pos] = Some(Rule::Misplaced(c));
         self.counts[position(c) as usize] += 1;
         self.includes |= mask(c);
         self.pos += 1;
@@ -90,7 +88,7 @@ impl Filter {
     #[wasm_bindgen(js_name = markIncorrect)]
     pub fn mark_incorrect(&mut self, c: char) {
         let c = c as u8;
-        self.rules[self.pos] = Some((Rule::Incorrect, c));
+        self.rules[self.pos] = Some(Rule::Incorrect(c));
         self.excludes |= mask(c);
         self.pos += 1;
     }
@@ -137,9 +135,9 @@ impl Dictionary {
 
         for (pos, rule) in filter.rules.iter().enumerate() {
             match rule {
-                Some((Rule::Correct, c)) => correct.push((*c, pos)),
-                Some((Rule::Misplaced, c)) => incorrect.push((*c, pos)),
-                Some((Rule::Incorrect, c)) => {
+                Some(Rule::Correct(c)) => correct.push((*c, pos)),
+                Some(Rule::Misplaced(c)) => incorrect.push((*c, pos)),
+                Some(Rule::Incorrect(c)) => {
                     incorrect.push((*c, pos));
 
                     let mask = mask(*c);
@@ -163,9 +161,10 @@ impl Dictionary {
                     && (includes == 0 || bitmap & includes == includes)
                     && correct.iter().all(|&(c, index)| letters[index] == c)
                     && incorrect.iter().all(|&(c, index)| letters[index] != c)
-                    && counts
-                        .iter()
-                        .all(|&(c, count)| letters.iter().filter(|&&l| l == c).count() == count)
+                    && (bitmap.count_ones() as usize == letters.len()
+                        || counts.iter().all(|&(c, count)| {
+                            letters.iter().filter(|&&l| l == c).count() == count
+                        }))
             })
             .cloned()
             .collect();

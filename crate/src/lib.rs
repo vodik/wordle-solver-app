@@ -103,6 +103,10 @@ impl Dictionary {
     #[wasm_bindgen]
     pub fn peek(&self) -> Option<String> {
         self.0.first().map(|word| word.to_string())
+
+    #[wasm_bindgen]
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
     #[wasm_bindgen]

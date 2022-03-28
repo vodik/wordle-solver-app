@@ -6,6 +6,7 @@
   let words = wordList;
 
   $: input = words.peek();
+  $: possibilities = words.len();
   let status = Array(5).fill(null);
 
   const filterList = (guess) => {
@@ -44,6 +45,7 @@
 
 <div id="game-board">
   <Row letters={input} {status} />
+  <p>{possibilities} possibilities</p>
 </div>
 
 <style>

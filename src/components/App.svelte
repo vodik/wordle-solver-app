@@ -6,6 +6,7 @@
   let words = wordList;
 
   $: input = words.peek();
+  let history = [];
   $: possibilities = words.len();
   let status = Array(5).fill(null);
 
@@ -23,6 +24,7 @@
       }
     });
 
+    history = [...history, {input, status}];
     words = words.filter(filter);
     status = status.map((mark) => (mark !== "green" ? null : "green"));
   };
@@ -44,6 +46,9 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div id="game-board">
+  {#each history as row }
+    <Row letters={row.input} status={row.status} />
+  {/each}
   <Row letters={input} {status} />
   <p>{possibilities} possibilities</p>
 </div>

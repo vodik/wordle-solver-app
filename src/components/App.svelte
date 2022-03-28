@@ -17,12 +17,12 @@
 
     status.forEach((mark, index) => {
       const letter = guess[index];
-      if (mark === null) {
-        filter.markIncorrect(letter, index);
-      } else if (mark === "green") {
-        filter.markCorrect(letter, index);
+      if (mark === "green") {
+        filter.markCorrect(letter);
       } else if (mark === "yellow") {
-        filter.markMisplaced(letter, index);
+        filter.markMisplaced(letter);
+      } else {
+        filter.markIncorrect(letter);
       }
     });
 

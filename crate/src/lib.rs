@@ -4,9 +4,12 @@ use js_sys::Error;
 use std::{fmt, str};
 use wasm_bindgen::prelude::*;
 
+fn position(c: u8) -> u8 {
+    c - b'a'
+}
+
 fn mask(c: u8) -> u32 {
-    let shift = c - b'a';
-    1 << shift as u32
+    1 << position(c) as u32
 }
 
 #[wasm_bindgen]
@@ -42,13 +45,19 @@ impl fmt::Display for Word {
     }
 }
 
-type Rule = (u8, usize);
+#[derive(Debug, Clone, Copy)]
+enum Rule {
+    Correct,
+    Misplaced,
+    Incorrect,
+}
 
 #[wasm_bindgen]
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Filter {
-    correct: Vec<Rule>,
-    incorrect: Vec<Rule>,
+    pos: usize,
+    rules: [Option<(Rule, u8)>; 5],
+    counts: [u8; 26],
     includes: u32,
     excludes: u32,
 }
@@ -61,24 +70,29 @@ impl Filter {
     }
 
     #[wasm_bindgen(js_name = markCorrect)]
-    pub fn mark_correct(&mut self, c: char, pos: usize) {
+    pub fn mark_correct(&mut self, c: char) {
         let c = c as u8;
-        self.correct.push((c, pos));
+        self.rules[self.pos] = Some((Rule::Correct, c));
+        self.counts[position(c) as usize] += 1;
         self.includes |= mask(c);
+        self.pos += 1;
     }
 
     #[wasm_bindgen(js_name = markMisplaced)]
-    pub fn mark_misplaced(&mut self, c: char, pos: usize) {
+    pub fn mark_misplaced(&mut self, c: char) {
         let c = c as u8;
-        self.incorrect.push((c, pos));
+        self.rules[self.pos] = Some((Rule::Misplaced, c));
+        self.counts[position(c) as usize] += 1;
         self.includes |= mask(c);
+        self.pos += 1;
     }
 
     #[wasm_bindgen(js_name = markIncorrect)]
-    pub fn mark_incorrect(&mut self, c: char, pos: usize) {
+    pub fn mark_incorrect(&mut self, c: char) {
         let c = c as u8;
-        self.incorrect.push((c, pos));
+        self.rules[self.pos] = Some((Rule::Incorrect, c));
         self.excludes |= mask(c);
+        self.pos += 1;
     }
 }
 
@@ -111,28 +125,51 @@ impl Dictionary {
     }
 
     #[wasm_bindgen]
-    pub fn filter(&self, filter: &Filter) -> Dictionary {
+    pub fn filter(&self, filter: &Filter) -> Result<Dictionary, Error> {
         let includes = filter.includes;
         let excludes = filter.excludes & !includes;
+
+        let mut correct = Vec::new();
+        let mut incorrect = Vec::new();
+
+        let mut counting = 0;
+        let mut counts = Vec::new();
+
+        for (pos, rule) in filter.rules.iter().enumerate() {
+            match rule {
+                Some((Rule::Correct, c)) => correct.push((*c, pos)),
+                Some((Rule::Misplaced, c)) => incorrect.push((*c, pos)),
+                Some((Rule::Incorrect, c)) => {
+                    incorrect.push((*c, pos));
+
+                    let mask = mask(*c);
+                    if includes & mask != 0 {
+                        let count = filter.counts[position(*c) as usize];
+                        if counting & mask == 0 && count > 0 {
+                            counts.push((*c, count as usize));
+                            counting |= mask;
+                        }
+                    }
+                }
+                None => return Err(Error::new("Not enough rules provided")),
+            }
+        }
 
         let words = self
             .0
             .iter()
-            .filter(|word| {
-                word.bitmap & excludes == 0
-                    && (includes == 0 || word.bitmap & includes == includes)
-                    && filter
-                        .correct
+            .filter(|&&Word { letters, bitmap }| {
+                bitmap & excludes == 0
+                    && (includes == 0 || bitmap & includes == includes)
+                    && correct.iter().all(|&(c, index)| letters[index] == c)
+                    && incorrect.iter().all(|&(c, index)| letters[index] != c)
+                    && counts
                         .iter()
-                        .all(|&(c, index)| word.letters[index] == c)
-                    && filter
-                        .incorrect
-                        .iter()
-                        .all(|&(c, index)| word.letters[index] != c)
+                        .all(|&(c, count)| letters.iter().filter(|&&l| l == c).count() == count)
             })
             .cloned()
             .collect();
 
-        Dictionary(words)
+        Ok(Dictionary(words))
     }
 }

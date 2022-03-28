@@ -101,8 +101,9 @@ impl Dictionary {
     }
 
     #[wasm_bindgen]
-    pub fn peek(&self) -> Option<String> {
-        self.0.first().map(|word| word.to_string())
+    pub fn get(&self, index: usize) -> Option<String> {
+        self.0.get(index).map(|word| word.to_string())
+    }
 
     #[wasm_bindgen]
     pub fn len(&self) -> usize {

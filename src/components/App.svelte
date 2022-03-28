@@ -28,6 +28,7 @@
 
     history = [...history, { input, status }];
 
+    position = 0;
     words = words.filter(filter);
     status = status.map((mark) => (mark !== "green" ? null : "green"));
   };
@@ -35,7 +36,7 @@
   const handleKeydown = ({ key }) => {
     if (key === "Backspace" && input.length > 0) {
       input = input.slice(0, -1);
-    } else if (key === "Enter") {
+    } else if (key === "Enter" && input.length == 5) {
       filterList(input);
     } else if (key === "ArrowLeft") {
       prevWord();

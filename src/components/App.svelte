@@ -5,10 +5,10 @@
   export let wordList;
   let words = wordList;
   $: possibilities = words.len();
+  $: empty = words.isEmpty();
   let position = 0;
 
-  $: input = words.get(position);
-  $: empty = words.isEmpty();
+  let input = words.get(position);
   let status = Array(5).fill(null);
   let history = [];
 
@@ -26,10 +26,12 @@
       }
     });
 
-    history = [...history, { input, status }];
+    console.log(filter.debug());
+    history = [...history, { words, position, input, status }];
 
     position = 0;
     words = words.filter(filter);
+    input = words.get(position);
     status = status.map((mark) => (mark !== "green" ? null : "green"));
   };
 
@@ -57,27 +59,43 @@
   $: atFirstWord = position === 0;
   const prevWord = () => {
     position = Math.max(position - 1, 0);
+    input = words.get(position);
   };
 
   $: atLastWord = position === possibilities - 1;
   const nextWord = () => {
     position = Math.min(position + 1, possibilities - 1);
+    input = words.get(position);
   };
 
   const reset = () => {
     words = wordList;
+    position = 0;
+    input = words.get(position);
     status = Array(5).fill(null);
+
     history = [];
   }
+
+  const undo = () => {
+    const state = history.pop();
+    history = history;
+
+    words = state.words;
+    position = status.position;
+    input = state.input;
+    status = state.status;
+  };
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 <button on:click={reset}>Reset</button>
+<button disabled={history.length === 0} on:click={undo}>Undo</button>
 
 <div id="game-board">
-  {#each history as row}
-    <Row letters={row.input} status={row.status} readonly />
+  {#each history as {input, status}}
+    <Row letters={input} {status} readonly />
   {/each}
   {#if empty}
     No results found

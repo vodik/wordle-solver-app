@@ -50,12 +50,61 @@ enum Rule {
     Incorrect(u8),
 }
 
+#[derive(Debug, Clone, Copy)]
+enum Count {
+    AtLeast(u8),
+    Exactly(u8),
+}
+
+impl Default for Count {
+    fn default() -> Self {
+        Self::AtLeast(0)
+    }
+}
+
+impl Count {
+    fn get(&self) -> u8 {
+        match *self {
+            Count::AtLeast(expect) => expect,
+            Count::Exactly(expect) => expect,
+        }
+    }
+
+    fn get_mut(&mut self) -> &mut u8 {
+        match self {
+            Count::AtLeast(expect) => expect,
+            Count::Exactly(expect) => expect,
+        }
+    }
+
+    fn inc(&mut self) {
+        *self.get_mut() += 1;
+    }
+
+    fn cap(&mut self) {
+        if let Self::AtLeast(expect) = *self {
+            *self = Count::Exactly(expect);
+        };
+    }
+
+    fn is_zero(&self) -> bool {
+        self.get() == 0
+    }
+
+    fn check(&self, count: u8) -> bool {
+        match *self {
+            Count::AtLeast(expect) => count >= expect,
+            Count::Exactly(expect) => count == expect,
+        }
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Default, Debug)]
 pub struct Filter {
     pos: usize,
     rules: [Option<Rule>; 5],
-    counts: [u8; 26],
+    counts: [Count; 26],
     includes: u32,
     excludes: u32,
 }
@@ -71,7 +120,7 @@ impl Filter {
     pub fn mark_correct(&mut self, c: char) {
         let c = c as u8;
         self.rules[self.pos] = Some(Rule::Correct(c));
-        self.counts[position(c) as usize] += 1;
+        self.counts[position(c) as usize].inc();
         self.includes |= mask(c);
         self.pos += 1;
     }
@@ -80,7 +129,7 @@ impl Filter {
     pub fn mark_misplaced(&mut self, c: char) {
         let c = c as u8;
         self.rules[self.pos] = Some(Rule::Misplaced(c));
-        self.counts[position(c) as usize] += 1;
+        self.counts[position(c) as usize].inc();
         self.includes |= mask(c);
         self.pos += 1;
     }
@@ -89,6 +138,7 @@ impl Filter {
     pub fn mark_incorrect(&mut self, c: char) {
         let c = c as u8;
         self.rules[self.pos] = Some(Rule::Incorrect(c));
+        self.counts[position(c) as usize].cap();
         self.excludes |= mask(c);
         self.pos += 1;
     }
@@ -129,10 +179,16 @@ impl Dictionary {
 
         let mut correct = Vec::new();
         let mut incorrect = Vec::new();
+        // FIXME: cleanup
+        let counts = &filter.counts;
 
-        let mut counting = 0;
-        let mut counts = Vec::new();
-
+        // TODO: Improvements:
+        // 1. We should always consider the count of characters. We always learn either:
+        //      a. at least n characters are present
+        //      b. no more than n characters are present
+        //    Current logic only considers the second case.
+        // 2. As we keep filtering, we should remember previous rules. While letter filter can be
+        //    redone, count information needs to be cumulative.
         for (pos, rule) in filter.rules.iter().enumerate() {
             match rule {
                 Some(Rule::Correct(c)) => correct.push((*c, pos)),
@@ -140,14 +196,13 @@ impl Dictionary {
                 Some(Rule::Incorrect(c)) => {
                     incorrect.push((*c, pos));
 
-                    let mask = mask(*c);
-                    if includes & mask != 0 {
-                        let count = filter.counts[position(*c) as usize];
-                        if counting & mask == 0 && count > 0 {
-                            counts.push((*c, count as usize));
-                            counting |= mask;
-                        }
-                    }
+                    // let mask = mask(*c);
+                    // if includes & mask != 0 {
+                    //     let count = counts.get_mut(position(*c) as usize).unwrap();
+                    //     if !count.is_zero() {
+                    //         count.cap();
+                    //     }
+                    // }
                 }
                 None => return Err(Error::new("Not enough rules provided")),
             }
@@ -161,14 +216,22 @@ impl Dictionary {
                     && (includes == 0 || bitmap & includes == includes)
                     && correct.iter().all(|&(c, index)| letters[index] == c)
                     && incorrect.iter().all(|&(c, index)| letters[index] != c)
-                    && (bitmap.count_ones() as usize == letters.len()
-                        || counts.iter().all(|&(c, count)| {
-                            letters.iter().filter(|&&l| l == c).count() == count
-                        }))
+                    && counts.iter().enumerate().all(|(pos, &count)| {
+                        count.is_zero() || {
+                            let c = (pos as u8) + b'a';
+                            let e = letters.iter().filter(|&&l| l == c).count();
+                            count.check(e as u8)
+                        }
+                    })
             })
             .cloned()
             .collect();
 
         Ok(Dictionary(words))
+    }
+
+    #[wasm_bindgen]
+    pub fn debug(&self) -> String {
+        format!("{:#?}", self)
     }
 }

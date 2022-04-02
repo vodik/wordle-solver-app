@@ -5,11 +5,11 @@
   export let wordList;
   let words = wordList;
   $: possibilities = words.len();
-
   let position = 0;
-  $: input = words.get(position);
-  let status = Array(5).fill(null);
 
+  $: input = words.get(position);
+  $: empty = words.isEmpty();
+  let status = Array(5).fill(null);
   let history = [];
 
   const filterList = (guess) => {
@@ -34,6 +34,10 @@
   };
 
   const handleKeydown = ({ key }) => {
+    if (empty) {
+      return;
+    }
+
     if (key === "Backspace" && input.length > 0) {
       input = input.slice(0, -1);
     } else if (key === "Enter" && input.length == 5) {
@@ -67,10 +71,14 @@
   {#each history as row}
     <Row letters={row.input} status={row.status} />
   {/each}
-  <button disabled={atFirstWord} on:click={prevWord}>&lt;</button>
-  <Row letters={input} {status} />
-  <button disabled={atLastWord} on:click={nextWord}>&gt;</button>
-  <p>{possibilities} possibilities</p>
+  {#if empty}
+    No results found
+  {:else}
+    <button disabled={atFirstWord} on:click={prevWord}>&lt;</button>
+    <Row letters={input} {status} />
+    <button disabled={atLastWord} on:click={nextWord}>&gt;</button>
+    <p>{possibilities} possibilities</p>
+  {/if}
 </div>
 
 <style>

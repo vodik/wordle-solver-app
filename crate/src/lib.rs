@@ -172,6 +172,11 @@ impl Dictionary {
         self.0.len()
     }
 
+    #[wasm_bindgen(js_name = isEmpty)]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     #[wasm_bindgen]
     pub fn filter(&self, filter: &Filter) -> Result<Dictionary, Error> {
         let includes = filter.includes;

@@ -63,9 +63,17 @@
   const nextWord = () => {
     position = Math.min(position + 1, possibilities - 1);
   };
+
+  const reset = () => {
+    words = wordList;
+    status = Array(5).fill(null);
+    history = [];
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
+
+<button on:click={reset}>Reset</button>
 
 <div id="game-board">
   {#each history as row}

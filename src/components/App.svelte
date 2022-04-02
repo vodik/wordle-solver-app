@@ -77,7 +77,7 @@
 
 <div id="game-board">
   {#each history as row}
-    <Row letters={row.input} status={row.status} />
+    <Row letters={row.input} status={row.status} readonly />
   {/each}
   {#if empty}
     No results found

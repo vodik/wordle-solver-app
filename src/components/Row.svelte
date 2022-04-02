@@ -1,8 +1,13 @@
 <script>
+  export let readonly = false;
   export let letters = "";
   export let status = Array(5).fill(null);
 
   const cycle = (index) => {
+    if (readonly) {
+      return;
+    }
+
     if (status[index] === null) {
       status[index] = "yellow";
     } else if (status[index] === "yellow") {

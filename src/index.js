@@ -1,8 +1,8 @@
 import { Dictionary } from '../wordle_solver/Cargo.toml'
 const dictionary = new Dictionary();
 
-import words from './words.json';
-words.forEach((word) => dictionary.add(word));
+import { solutions } from './words.json';
+solutions.forEach((word) => dictionary.add(word));
 
 import App from './components/App.svelte';
 const app = new App({

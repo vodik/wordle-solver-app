@@ -96,7 +96,6 @@ struct State {
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct Filter {
-    pos: u8,
     state: [Option<State>; 26],
     includes: u32,
     excludes: u32,
@@ -120,42 +119,39 @@ impl Filter {
     }
 
     #[wasm_bindgen(js_name = markCorrect)]
-    pub fn mark_correct(&mut self, c: char) {
+    pub fn mark_correct(&mut self, c: char, pos: usize) {
         let c = c as u8;
-        let pos_mask = 1 << self.pos;
+        let pos_mask = 1 << pos;
 
         let state = self.entry_mut(c);
         state.freq.inc();
         state.must_have |= pos_mask;
 
         self.includes |= mask(c);
-        self.pos += 1;
     }
 
     #[wasm_bindgen(js_name = markMisplaced)]
-    pub fn mark_misplaced(&mut self, c: char) {
+    pub fn mark_misplaced(&mut self, c: char, pos: usize) {
         let c = c as u8;
-        let pos_mask = 1 << self.pos;
+        let pos_mask = 1 << pos;
 
         let state = self.entry_mut(c);
         state.freq.inc();
         state.must_exclude |= pos_mask;
 
         self.includes |= mask(c);
-        self.pos += 1;
     }
 
     #[wasm_bindgen(js_name = markIncorrect)]
-    pub fn mark_incorrect(&mut self, c: char) {
+    pub fn mark_incorrect(&mut self, c: char, pos: usize) {
         let c = c as u8;
-        let pos_mask = 1 << self.pos;
+        let pos_mask = 1 << pos;
 
         let state = self.entry_mut(c);
         state.freq.cap();
         state.must_exclude |= pos_mask;
 
         self.excludes |= mask(c);
-        self.pos += 1;
     }
 }
 
@@ -193,11 +189,7 @@ impl Dictionary {
     }
 
     #[wasm_bindgen]
-    pub fn filter(&self, filter: &Filter) -> Result<Dictionary, Error> {
-        if filter.pos != 5 {
-            return Err(Error::new("Not enough rules provided"));
-        }
-
+    pub fn filter(&self, filter: &Filter) -> Dictionary {
         let includes = filter.includes;
         let excludes = filter.excludes & !includes;
 
@@ -224,11 +216,11 @@ impl Dictionary {
 
                         // Now we can check all known positional constraints
                         let correct_positions = letters.iter().enumerate().all(|(pos, &letter)| {
-                            let mask = 1 << pos;
+                            let pos_mask = 1 << pos;
                             if letter != cur {
-                                state.must_have & mask == 0
+                                state.must_have & pos_mask == 0
                             } else {
-                                state.must_exclude & mask == 0
+                                state.must_exclude & pos_mask == 0
                             }
                         });
 
@@ -248,6 +240,6 @@ impl Dictionary {
             .cloned()
             .collect();
 
-        Ok(Dictionary(words))
+        Dictionary(words)
     }
 }

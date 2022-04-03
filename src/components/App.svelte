@@ -77,7 +77,7 @@
     status = Array(5).fill(null);
 
     history = [];
-  }
+  };
 
   const undo = () => {
     const state = history.pop();
@@ -96,7 +96,7 @@
 <button disabled={history.length === 0} on:click={undo}>Undo</button>
 
 <div id="game-board">
-  {#each history as {input, status}}
+  {#each history as { input, status }}
     <Row letters={input} {status} readonly />
   {/each}
   {#if empty}

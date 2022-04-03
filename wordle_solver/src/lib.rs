@@ -73,8 +73,8 @@ impl Frequency {
         self.limit = Limit::Exactly;
     }
 
-    fn is_zero(&self) -> bool {
-        self.expect == 0
+    fn is_interesting(&self) -> bool {
+        matches!(self.limit, Limit::Exactly) || self.expect > 1
     }
 
     fn check(&self, count: usize) -> bool {
@@ -198,7 +198,7 @@ impl Dictionary {
         for (dst, c) in letters.iter_mut().zip(word.bytes()) {
             *dst = c;
         }
-        
+
         self.0.iter().any(|word| word.letters == letters)
     }
 
@@ -224,10 +224,14 @@ impl Dictionary {
                     .state
                     .iter()
                     .zip(b'a'..=b'z')
-                    .filter(|(cell, _)| cell.is_some())
-                    .all(|(cell, cur)| {
-                        let state = cell.as_ref().unwrap();
-
+                    .flat_map(|(cell, cur)| {
+                        // Since the rough filter a lot of heavy lifting ahead of time, we can
+                        // focus on only checking rules where we expect at least one match to be
+                        // found.
+                        cell.as_ref()
+                            .and_then(|state| (state.freq.expect > 0).then(|| (state, cur)))
+                    })
+                    .all(|(state, cur)| {
                         // Now we can check all known positional constraints
                         let correct_positions = letters.iter().enumerate().all(|(pos, &letter)| {
                             let pos_mask = 1 << pos;
@@ -238,17 +242,18 @@ impl Dictionary {
                             }
                         });
 
-                        // And then check the frequency contraints.
+                        // And then check the frequency contraints
                         //
-                        // We can skip any zero constraints as they'll
-                        // have already been solved by the rought
-                        // bitmap filter above.
-                        let correct_count = state.freq.is_zero()
+                        // Frequency contains only need to be explicitly checked under a few
+                        // conditions: if we know the exact amount of times a letter will apear or
+                        // if it will apear more than once. Otherwise the check is redundant with
+                        // the other filters applied above.
+                        let correct_freq = !state.freq.is_interesting()
                             || state
                                 .freq
                                 .check(letters.iter().filter(|&&letter| letter == cur).count());
 
-                        correct_positions && correct_count
+                        correct_positions && correct_freq
                     })
             })
             .cloned()

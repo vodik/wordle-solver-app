@@ -1,5 +1,5 @@
 <script>
-  import { Filter } from "../../crate/Cargo.toml";
+  import { Filter } from "../../wordle_solver/Cargo.toml";
   import Row from "./Row.svelte";
 
   export let wordList;

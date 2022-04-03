@@ -44,51 +44,44 @@ impl fmt::Display for Word {
 }
 
 #[derive(Clone, Copy)]
-enum Frequency {
-    AtLeast(u8),
-    Exactly(u8),
+enum Limit {
+    AtLeast,
+    Exactly,
+}
+
+#[derive(Clone, Copy)]
+struct Frequency {
+    expect: u8,
+    limit: Limit,
 }
 
 impl Default for Frequency {
     fn default() -> Self {
-        Self::AtLeast(0)
+        Self {
+            expect: 0,
+            limit: Limit::AtLeast,
+        }
     }
 }
 
 impl Frequency {
-    fn get(&self) -> u8 {
-        match *self {
-            Self::AtLeast(expect) => expect,
-            Self::Exactly(expect) => expect,
-        }
-    }
-
-    fn get_mut(&mut self) -> &mut u8 {
-        match self {
-            Self::AtLeast(expect) => expect,
-            Self::Exactly(expect) => expect,
-        }
-    }
-
     fn inc(&mut self) {
-        *self.get_mut() += 1;
+        self.expect += 1;
     }
 
     fn cap(&mut self) {
-        if let Self::AtLeast(expect) = *self {
-            *self = Self::Exactly(expect);
-        };
+        self.limit = Limit::Exactly;
     }
 
     fn is_zero(&self) -> bool {
-        self.get() == 0
+        self.expect == 0
     }
 
     fn check(&self, count: usize) -> bool {
         let count: u8 = count.try_into().unwrap();
-        match *self {
-            Self::AtLeast(expect) => count >= expect,
-            Self::Exactly(expect) => count == expect,
+        match self.limit {
+            Limit::AtLeast => count >= self.expect,
+            Limit::Exactly => count == self.expect,
         }
     }
 }

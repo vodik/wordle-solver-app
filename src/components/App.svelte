@@ -84,7 +84,7 @@
     history = history;
 
     words = state.words;
-    position = status.position;
+    position = state.position;
     input = state.input;
     status = state.status;
   };

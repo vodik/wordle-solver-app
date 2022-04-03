@@ -44,18 +44,18 @@ impl fmt::Display for Word {
 }
 
 #[derive(Clone, Copy)]
-enum Count {
+enum Frequency {
     AtLeast(u8),
     Exactly(u8),
 }
 
-impl Default for Count {
+impl Default for Frequency {
     fn default() -> Self {
         Self::AtLeast(0)
     }
 }
 
-impl Count {
+impl Frequency {
     fn get(&self) -> u8 {
         match *self {
             Self::AtLeast(expect) => expect,
@@ -95,14 +95,14 @@ impl Count {
 
 #[derive(Default)]
 struct State {
-    count: Count,
+    freq: Frequency,
     must_have: u8,
     must_exclude: u8,
 }
 
 impl State {
     fn is_empty(&self) -> bool {
-        self.count.is_zero() && self.must_have == 0 && self.must_exclude == 0
+        self.freq.is_zero() && self.must_have == 0 && self.must_exclude == 0
     }
 }
 
@@ -127,7 +127,7 @@ impl Filter {
         let c = c as u8;
 
         let state = &mut self.state[position(c) as usize];
-        state.count.inc();
+        state.freq.inc();
         state.must_have |= 1 << self.pos;
 
         self.includes |= mask(c);
@@ -139,7 +139,7 @@ impl Filter {
         let c = c as u8;
 
         let state = &mut self.state[position(c) as usize];
-        state.count.inc();
+        state.freq.inc();
         state.must_exclude |= 1 << self.pos;
 
         self.includes |= mask(c);
@@ -151,7 +151,7 @@ impl Filter {
         let c = c as u8;
 
         let state = &mut self.state[position(c) as usize];
-        state.count.cap();
+        state.freq.cap();
         state.must_exclude |= 1 << self.pos;
 
         self.excludes |= mask(c);
@@ -230,10 +230,14 @@ impl Dictionary {
                             }
                         });
 
-                        // And then check the frequency contraints
-                        let correct_count = state.count.is_zero()
+                        // And then check the frequency contraints.
+                        //
+                        // We can skip any zero constraints as they'll
+                        // have already been solved by the rought
+                        // bitmap filter above.
+                        let correct_count = state.freq.is_zero()
                             || state
-                                .count
+                                .freq
                                 .check(letters.iter().filter(|&&letter| letter == cur).count());
 
                         correct_positions && correct_count

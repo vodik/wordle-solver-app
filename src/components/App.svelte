@@ -12,6 +12,8 @@
   let status = Array(5).fill(null);
   let history = [];
 
+  $: warnBadWord = input && input.length == 5 && !words.contains(input);
+
   const filterList = (guess) => {
     const filter = new Filter();
 
@@ -40,7 +42,6 @@
     }
 
     const { key } = event;
-
     if (key === "Backspace" && input.length > 0) {
       input = input.slice(0, -1);
     } else if (key === "Enter" && input.length == 5) {
@@ -106,6 +107,9 @@
     <Row letters={input} {status} />
     <button disabled={atLastWord} on:click={nextWord}>&gt;</button>
     <p>{possibilities} possibilities</p>
+    {#if warnBadWord}
+      <p>Word is not in the word list</p>
+    {/if}
   {/if}
 </div>
 

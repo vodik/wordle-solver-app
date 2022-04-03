@@ -189,6 +189,20 @@ impl Dictionary {
     }
 
     #[wasm_bindgen]
+    pub fn contains(&self, word: &str) -> bool {
+        if word.len() != 5 {
+            return false;
+        }
+
+        let mut letters = [0u8; 5];
+        for (dst, c) in letters.iter_mut().zip(word.bytes()) {
+            *dst = c;
+        }
+        
+        self.0.iter().any(|word| word.letters == letters)
+    }
+
+    #[wasm_bindgen]
     pub fn filter(&self, filter: &Filter) -> Dictionary {
         let includes = filter.includes;
         let excludes = filter.excludes & !includes;

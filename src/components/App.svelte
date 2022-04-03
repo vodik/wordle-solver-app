@@ -26,7 +26,6 @@
       }
     });
 
-    console.log(filter.debug());
     history = [...history, { words, position, input, status }];
 
     position = 0;
@@ -35,15 +34,18 @@
     status = status.map((mark) => (mark !== "green" ? null : "green"));
   };
 
-  const handleKeydown = ({ key }) => {
+  const handleKeydown = (event) => {
     if (empty) {
       return;
     }
+
+    const { key } = event;
 
     if (key === "Backspace" && input.length > 0) {
       input = input.slice(0, -1);
     } else if (key === "Enter" && input.length == 5) {
       filterList(input);
+      event.preventDefault();
     } else if (key === "ArrowLeft") {
       prevWord();
     } else if (key === "ArrowRight") {

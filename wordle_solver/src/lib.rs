@@ -93,19 +93,23 @@ struct State {
     must_exclude: u8,
 }
 
-impl State {
-    fn is_empty(&self) -> bool {
-        self.freq.is_zero() && self.must_have == 0 && self.must_exclude == 0
-    }
-}
-
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct Filter {
     pos: u8,
-    state: [State; 26],
+    state: [Option<State>; 26],
     includes: u32,
     excludes: u32,
+}
+
+impl Filter {
+    fn entry_mut(&mut self, c: u8) -> &mut State {
+        let cell = &mut self.state[position(c) as usize];
+        if cell.is_none() {
+            *cell = Some(State::default());
+        }
+        cell.as_mut().unwrap()
+    }
 }
 
 #[wasm_bindgen]
@@ -118,10 +122,11 @@ impl Filter {
     #[wasm_bindgen(js_name = markCorrect)]
     pub fn mark_correct(&mut self, c: char) {
         let c = c as u8;
+        let pos_mask = 1 << self.pos;
 
-        let state = &mut self.state[position(c) as usize];
+        let state = self.entry_mut(c);
         state.freq.inc();
-        state.must_have |= 1 << self.pos;
+        state.must_have |= pos_mask;
 
         self.includes |= mask(c);
         self.pos += 1;
@@ -130,10 +135,11 @@ impl Filter {
     #[wasm_bindgen(js_name = markMisplaced)]
     pub fn mark_misplaced(&mut self, c: char) {
         let c = c as u8;
+        let pos_mask = 1 << self.pos;
 
-        let state = &mut self.state[position(c) as usize];
+        let state = self.entry_mut(c);
         state.freq.inc();
-        state.must_exclude |= 1 << self.pos;
+        state.must_exclude |= pos_mask;
 
         self.includes |= mask(c);
         self.pos += 1;
@@ -142,10 +148,11 @@ impl Filter {
     #[wasm_bindgen(js_name = markIncorrect)]
     pub fn mark_incorrect(&mut self, c: char) {
         let c = c as u8;
+        let pos_mask = 1 << self.pos;
 
-        let state = &mut self.state[position(c) as usize];
+        let state = self.entry_mut(c);
         state.freq.cap();
-        state.must_exclude |= 1 << self.pos;
+        state.must_exclude |= pos_mask;
 
         self.excludes |= mask(c);
         self.pos += 1;
@@ -211,8 +218,10 @@ impl Dictionary {
                     .state
                     .iter()
                     .zip(b'a'..=b'z')
-                    .filter(|(state, _)| !state.is_empty())
-                    .all(|(state, cur)| {
+                    .filter(|(cell, _)| cell.is_some())
+                    .all(|(cell, cur)| {
+                        let state = cell.as_ref().unwrap();
+
                         // Now we can check all known positional constraints
                         let correct_positions = letters.iter().enumerate().all(|(pos, &letter)| {
                             let mask = 1 << pos;

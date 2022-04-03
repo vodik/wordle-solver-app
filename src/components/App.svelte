@@ -3,16 +3,18 @@
   import Row from "./Row.svelte";
 
   export let wordList;
-  let words = wordList;
-  $: possibilities = words.len();
-  $: empty = words.isEmpty();
+  let list = wordList;
+  $: possibilities = list.len();
+  $: empty = list.isEmpty();
   let position = 0;
 
-  let input = words.get(position);
+  let input = list.get(position);
   let status = Array(5).fill(null);
   let history = [];
 
-  $: warnBadWord = input && input.length == 5 && !words.contains(input);
+  $: inputFull = input && input.length === 5;
+  $: validWord = inputFull && wordList.contains(input);
+  $: possibleTarget = inputFull && list.contains(input);
 
   const filterList = (guess) => {
     const filter = new Filter();
@@ -28,11 +30,11 @@
       }
     });
 
-    history = [...history, { words, position, input, status }];
+    history = [...history, { input, status, position, list }];
 
     position = 0;
-    words = words.filter(filter);
-    input = words.get(position);
+    list = list.filter(filter);
+    input = list.get(position);
     status = status.map((mark) => (mark !== "green" ? null : "green"));
   };
 
@@ -44,7 +46,7 @@
     const { key } = event;
     if (key === "Backspace" && input.length > 0) {
       input = input.slice(0, -1);
-    } else if (key === "Enter" && input.length == 5) {
+    } else if (key === "Enter" && inputFull) {
       filterList(input);
       event.preventDefault();
     } else if (key === "ArrowLeft") {
@@ -60,21 +62,22 @@
   };
 
   $: atFirstWord = position === 0;
+  $: atLastWord = position === possibilities - 1;
+
   const prevWord = () => {
     position = Math.max(position - 1, 0);
-    input = words.get(position);
+    input = list.get(position);
   };
 
-  $: atLastWord = position === possibilities - 1;
   const nextWord = () => {
     position = Math.min(position + 1, possibilities - 1);
-    input = words.get(position);
+    input = list.get(position);
   };
 
   const reset = () => {
-    words = wordList;
+    list = wordList;
     position = 0;
-    input = words.get(position);
+    input = list.get(position);
     status = Array(5).fill(null);
 
     history = [];
@@ -84,7 +87,7 @@
     const state = history.pop();
     history = history;
 
-    words = state.words;
+    list = state.list;
     position = state.position;
     input = state.input;
     status = state.status;
@@ -106,9 +109,11 @@
     <button disabled={atFirstWord} on:click={prevWord}>&lt;</button>
     <Row letters={input} {status} />
     <button disabled={atLastWord} on:click={nextWord}>&gt;</button>
-    <p>{possibilities} possibilities</p>
-    {#if warnBadWord}
-      <p>Word is not in the word list</p>
+    <p>{possibilities.toLocaleString()} possibilities</p>
+    {#if inputFull && !validWord}
+      <p>Not a valid word</p>
+    {:else if inputFull && !possibleTarget}
+      <p>Word is valid but not a possible solution</p>
     {/if}
   {/if}
 </div>

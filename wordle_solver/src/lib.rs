@@ -220,14 +220,14 @@ impl Dictionary {
                     .iter()
                     .zip(b'a'..=b'z')
                     .flat_map(|(cell, cur)| {
-                        // Since the rough filter a lot of heavy lifting ahead of time, we can
-                        // focus on only checking rules where we expect at least one match to be
-                        // found.
+                        // Since the rough filter does a lot of the heavy lifting ahead of time, we
+                        // can focus on only checking rules where we expect at least one match to
+                        // be found.
                         cell.as_ref()
                             .and_then(|state| (state.expect.expect > 0).then(|| (state, cur)))
                     })
                     .all(|(state, cur)| {
-                        // Now we can check all known positional constraints
+                        // Check all known positional constraints
                         let correct_positions = letters.iter().enumerate().all(|(pos, &letter)| {
                             let pos_mask = 1 << pos;
                             if letter != cur {
@@ -237,12 +237,15 @@ impl Dictionary {
                             }
                         });
 
-                        // And then check the frequency contraints
+                        // And then check any necessay frequency contraints
                         //
                         // Frequency contains only need to be explicitly checked under a few
-                        // conditions: if we know the exact amount of times a letter will apear or
-                        // if it will apear more than once. Otherwise the check is redundant with
-                        // the other filters applied above.
+                        // conditions:
+                        // 1. If we know the *exact* number of times a letter must apear
+                        // 2. If it know the letter must apear more than once
+                        //
+                        // In all other cases, this constraint provides no additional information
+                        // and can be skipped.
                         let correct_freq = !state.expect.is_interesting()
                             || state
                                 .expect

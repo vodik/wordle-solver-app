@@ -106,9 +106,11 @@
   {#if empty}
     No results found
   {:else}
+    <div id="input-row">
     <button disabled={atFirstWord} on:click={prevWord}>&lt;</button>
     <Row letters={input} {status} />
     <button disabled={atLastWord} on:click={nextWord}>&gt;</button>
+    </div>
     <p>{possibilities.toLocaleString()} possibilities</p>
     {#if inputFull && !validWord}
       <p>Not a valid word</p>
@@ -123,5 +125,14 @@
     display: flex;
     align-items: center;
     flex-direction: column;
+  }
+
+  #input-row {
+    display: flex;
+    flex-direction: row;
+  }
+
+  #input-row button {
+    margin: 5px;
   }
 </style>

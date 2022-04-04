@@ -50,12 +50,12 @@ enum Limit {
 }
 
 #[derive(Clone, Copy)]
-struct Frequency {
+struct Expect {
     expect: u8,
     limit: Limit,
 }
 
-impl Default for Frequency {
+impl Default for Expect {
     fn default() -> Self {
         Self {
             expect: 0,
@@ -64,7 +64,7 @@ impl Default for Frequency {
     }
 }
 
-impl Frequency {
+impl Expect {
     fn inc(&mut self) {
         self.expect += 1;
     }
@@ -88,7 +88,7 @@ impl Frequency {
 
 #[derive(Default)]
 struct State {
-    freq: Frequency,
+    expect: Expect,
     must_have: u8,
     must_exclude: u8,
 }
@@ -124,7 +124,7 @@ impl Filter {
         let pos_mask = 1 << pos;
 
         let state = self.entry_mut(c);
-        state.freq.inc();
+        state.expect.inc();
         state.must_have |= pos_mask;
 
         self.includes |= mask(c);
@@ -136,7 +136,7 @@ impl Filter {
         let pos_mask = 1 << pos;
 
         let state = self.entry_mut(c);
-        state.freq.inc();
+        state.expect.inc();
         state.must_exclude |= pos_mask;
 
         self.includes |= mask(c);
@@ -148,7 +148,7 @@ impl Filter {
         let pos_mask = 1 << pos;
 
         let state = self.entry_mut(c);
-        state.freq.cap();
+        state.expect.cap();
         state.must_exclude |= pos_mask;
 
         self.excludes |= mask(c);
@@ -166,19 +166,16 @@ impl Dictionary {
         Self::default()
     }
 
-    #[wasm_bindgen]
     pub fn add(&mut self, word: &str) -> Result<(), Error> {
         let word = Word::new(word)?;
         self.0.push(word);
         Ok(())
     }
 
-    #[wasm_bindgen]
     pub fn get(&self, index: usize) -> Option<String> {
         self.0.get(index).map(|word| word.to_string())
     }
 
-    #[wasm_bindgen]
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -188,7 +185,6 @@ impl Dictionary {
         self.0.is_empty()
     }
 
-    #[wasm_bindgen]
     pub fn contains(&self, word: &str) -> bool {
         if word.len() != 5 {
             return false;
@@ -202,7 +198,6 @@ impl Dictionary {
         self.0.iter().any(|word| word.letters == letters)
     }
 
-    #[wasm_bindgen]
     pub fn filter(&self, filter: &Filter) -> Dictionary {
         let includes = filter.includes;
         let excludes = filter.excludes & !includes;
@@ -229,7 +224,7 @@ impl Dictionary {
                         // focus on only checking rules where we expect at least one match to be
                         // found.
                         cell.as_ref()
-                            .and_then(|state| (state.freq.expect > 0).then(|| (state, cur)))
+                            .and_then(|state| (state.expect.expect > 0).then(|| (state, cur)))
                     })
                     .all(|(state, cur)| {
                         // Now we can check all known positional constraints
@@ -248,9 +243,9 @@ impl Dictionary {
                         // conditions: if we know the exact amount of times a letter will apear or
                         // if it will apear more than once. Otherwise the check is redundant with
                         // the other filters applied above.
-                        let correct_freq = !state.freq.is_interesting()
+                        let correct_freq = !state.expect.is_interesting()
                             || state
-                                .freq
+                                .expect
                                 .check(letters.iter().filter(|&&letter| letter == cur).count());
 
                         correct_positions && correct_freq

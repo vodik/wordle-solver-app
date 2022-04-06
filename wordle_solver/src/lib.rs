@@ -87,7 +87,7 @@ impl Expect {
 }
 
 #[derive(Default)]
-struct State {
+struct Constraint {
     expect: Expect,
     must_have: u8,
     must_exclude: u8,
@@ -96,18 +96,25 @@ struct State {
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct Filter {
-    state: [Option<State>; 26],
+    constraints: [Option<Constraint>; 26],
     includes: u32,
     excludes: u32,
 }
 
 impl Filter {
-    fn entry_mut(&mut self, c: u8) -> &mut State {
-        let cell = &mut self.state[position(c) as usize];
+    fn entry_mut(&mut self, c: u8) -> &mut Constraint {
+        let cell = &mut self.constraints[position(c) as usize];
         if cell.is_none() {
-            *cell = Some(State::default());
+            *cell = Some(Constraint::default());
         }
         cell.as_mut().unwrap()
+    }
+
+    fn constraints(&self) -> impl Iterator<Item = (&Constraint, u8)> + '_ {
+        self.constraints
+            .iter()
+            .zip(b'a'..=b'z')
+            .flat_map(|(cell, cur)| cell.as_ref().map(|state| (state, cur)))
     }
 }
 
@@ -216,24 +223,21 @@ impl Dictionary {
             })
             .filter(|&Word { letters, .. }| {
                 filter
-                    .state
-                    .iter()
-                    .zip(b'a'..=b'z')
-                    .flat_map(|(cell, cur)| {
+                    .constraints()
+                    .filter(|(constraint, _)| {
                         // Since the rough filter does a lot of the heavy lifting ahead of time, we
                         // can focus on only checking rules where we expect at least one match to
                         // be found.
-                        cell.as_ref()
-                            .and_then(|state| (state.expect.expect > 0).then(|| (state, cur)))
+                        constraint.expect.expect > 0
                     })
-                    .all(|(state, cur)| {
-                        // Check all known positional constraints
+                    .all(|(constraint, cur)| {
+                        // Now we can check all known positional constraints
                         let correct_positions = letters.iter().enumerate().all(|(pos, &letter)| {
                             let pos_mask = 1 << pos;
                             if letter != cur {
-                                state.must_have & pos_mask == 0
+                                constraint.must_have & pos_mask == 0
                             } else {
-                                state.must_exclude & pos_mask == 0
+                                constraint.must_exclude & pos_mask == 0
                             }
                         });
 
@@ -246,8 +250,8 @@ impl Dictionary {
                         //
                         // In all other cases, this constraint provides no additional information
                         // and can be skipped.
-                        let correct_freq = !state.expect.is_interesting()
-                            || state
+                        let correct_freq = !constraint.expect.is_interesting()
+                            || constraint
                                 .expect
                                 .check(letters.iter().filter(|&&letter| letter == cur).count());
 

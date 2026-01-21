@@ -1,5 +1,5 @@
 <script>
-  import { Filter } from "../../wordle_solver/Cargo.toml";
+  import { Filter } from "../../wordle_solver/pkg/wordle_solver.js";
   import Row from "./Row.svelte";
 
   export let wordList;
@@ -38,6 +38,17 @@
     status = status.map((mark) => (mark !== "green" ? null : "green"));
   };
 
+  const cycleStatus = (index) => {
+    if (status[index] === null) {
+      status[index] = "yellow";
+    } else if (status[index] === "yellow") {
+      status[index] = "green";
+    } else if (status[index] === "green") {
+      status[index] = null;
+    }
+    status = status;
+  };
+
   const handleKeydown = (event) => {
     if (empty) {
       return;
@@ -53,6 +64,8 @@
       prevWord();
     } else if (key === "ArrowRight") {
       nextWord();
+    } else if (inputFull && key >= "1" && key <= "5") {
+      cycleStatus(parseInt(key) - 1);
     } else if (input.length < 5) {
       let found = key.match(/[a-z]/gi);
       if (found && found.length === 1) {
@@ -108,7 +121,7 @@
   {:else}
     <div id="input-row">
     <button disabled={atFirstWord} on:click={prevWord}>&lt;</button>
-    <Row letters={input} {status} />
+    <Row letters={input} bind:status />
     <button disabled={atLastWord} on:click={nextWord}>&gt;</button>
     </div>
     <p>{possibilities.toLocaleString()} possibilities</p>

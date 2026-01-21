@@ -20,14 +20,17 @@
 
 <div class="letter-row">
   {#each { length: 5 } as _, i}
-    <div
+    <button
       class="letter-box {status[i]}"
       class:green={status[i] === "green"}
       class:yellow={status[i] === "yellow"}
+      disabled={readonly}
       on:click={() => cycle(i)}
+      type="button"
+      aria-label="Letter {i + 1}: {letters[i] || 'empty'}, status: {status[i] || 'unknown'}"
     >
       {letters[i] || ""}
-    </div>
+    </button>
   {/each}
 </div>
 
@@ -49,6 +52,15 @@
     justify-content: center;
     align-items: center;
     text-transform: uppercase;
+    padding: 0;
+    cursor: pointer;
+    background-color: transparent;
+  }
+
+  .letter-box:disabled {
+    cursor: default;
+    opacity: 1;
+    color: inherit;
   }
 
   .filled-box {
